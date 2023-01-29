@@ -6,8 +6,27 @@ class DropBoxController {
     this.progressBarEl = this.snackModalEl.querySelector('.mc-progress-bar-fg');
     this.namefileEl = this.snackModalEl.querySelector('.filename');
     this.timeleftEl = this.snackModalEl.querySelector('.timeleft');
+    this.listFilesEls = document.querySelector(
+      '#list-of-files-and-directories'
+    );
 
+    this.connectFirebase();
     this.initEvents();
+    this.readFiles();
+  }
+
+  connectFirebase() {
+    const config = {
+      apiKey: 'AIzaSyD2tq95uODEXaJLjh-JXNQjKIjPTGzlRyQ',
+      authDomain: 'dropbox-clone-910fd.firebaseapp.com',
+      databaseURL: 'https://dropbox-clone-910fd-default-rtdb.firebaseio.com',
+      projectId: 'dropbox-clone-910fd',
+      storageBucket: 'dropbox-clone-910fd.appspot.com',
+      messagingSenderId: '212323901964',
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(config);
   }
 
   initEvents() {
@@ -16,12 +35,31 @@ class DropBoxController {
     });
 
     this.inputFilesEl.addEventListener('change', event => {
-      this.uploadTask(event.target.files);
+      this.btnSendFileEl.disabled = true;
 
+      this.uploadTask(event.target.files)
+        .then(responses => {
+          responses.forEach(resp => {
+            this.getFireBaseRef().push().set(resp.files['input-file']);
+          });
+          this.uploadComplete();
+        })
+        .catch(err => {
+          this.uploadComplete();
+          console.error(err);
+        });
       this.modalShow();
-
-      this.inputFilesEl.value = '';
     });
+  }
+
+  uploadComplete() {
+    this.modalShow(false);
+    this.inputFilesEl.value = '';
+    this.btnSendFileEl.disabled = false;
+  }
+
+  getFirebaseRef() {
+    return firebase.database().ref('files');
   }
 
   modalShow(show = true) {
@@ -34,14 +72,11 @@ class DropBoxController {
     [...files].forEach(file => {
       promises.push(
         new Promise((resolve, reject) => {
-          git;
           let ajax = new XMLHttpRequest();
 
           ajax.open('POST', '/upload');
 
           ajax.onload = event => {
-            this.modalShow(false);
-
             try {
               resolve(JSON.parse(ajax.responseText));
             } catch (e) {
@@ -50,7 +85,6 @@ class DropBoxController {
           };
 
           ajax.onerror = event => {
-            this.modalShow(false);
             reject(event);
           };
 
@@ -116,29 +150,6 @@ class DropBoxController {
           <path d="M77.955 52h50.04A3.002 3.002 0 0 1 131 55.007v58.988a4.008 4.008 0 0 1-4.003 4.005H39.003A4.002 4.002 0 0 1 35 113.995V44.99c0-2.206 1.79-3.99 3.997-3.99h26.002c1.666 0 3.667 1.166 4.49 2.605l3.341 5.848s1.281 2.544 5.12 2.544l.005.003z" fill="#92CEFF"></path>
         </g>
       </svg>
-        `;
-        break;
-
-      default:
-        return `
-        
-        <li>
-          <svg width="160" height="160" viewBox="0 0 160 160" class="mc-icon-template-content tile__preview tile__preview--icon">
-              <title>1357054_617b.jpg</title>
-                 <defs>
-                 <rect id="mc-content-unknown-large-b" x="43" y="30" width="74" height="100" rx="4"></rect>
-                 <filter x="-.7%" y="-.5%" width="101.4%" height="102%" filterUnits="objectBoundingBox" id="mc-content-unknown-large-a">
-                   <feOffset dy="1" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
-                   <feColorMatrix values="0 0 0 0 0.858823529 0 0 0 0 0.870588235 0 0 0 0 0.88627451 0 0 0 1 0" in="shadowOffsetOuter1"></feColorMatrix>
-                 </filter>
-               </defs>
-                <g fill="none" fill-rule="evenodd">
-                  <g>
-                   <use fill="#000" filter="url(#mc-content-unknown-large-a)" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#mc-content-unknown-large-b"></use>
-                   <use fill="#F7F9FA" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#mc-content-unknown-large-b"></use>
-                  </g>
-                </g>
-          </svg>     
         `;
         break;
 
@@ -440,16 +451,55 @@ class DropBoxController {
         `;
 
         break;
+
+      default:
+        return `
+          
+          <li>
+            <svg width="160" height="160" viewBox="0 0 160 160" class="mc-icon-template-content tile__preview tile__preview--icon">
+                <title>1357054_617b.jpg</title>
+                   <defs>
+                   <rect id="mc-content-unknown-large-b" x="43" y="30" width="74" height="100" rx="4"></rect>
+                   <filter x="-.7%" y="-.5%" width="101.4%" height="102%" filterUnits="objectBoundingBox" id="mc-content-unknown-large-a">
+                     <feOffset dy="1" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+                     <feColorMatrix values="0 0 0 0 0.858823529 0 0 0 0 0.870588235 0 0 0 0 0.88627451 0 0 0 1 0" in="shadowOffsetOuter1"></feColorMatrix>
+                   </filter>
+                 </defs>
+                  <g fill="none" fill-rule="evenodd">
+                    <g>
+                     <use fill="#000" filter="url(#mc-content-unknown-large-a)" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#mc-content-unknown-large-b"></use>
+                     <use fill="#F7F9FA" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#mc-content-unknown-large-b"></use>
+                    </g>
+                  </g>
+            </svg>     
+          `;
     }
   }
 
-  getFileView(file) {
-    return `
-    <li>
+  getFileView(file, key) {
+    let li = document.createElement('li');
+    li.dataset.key = key;
+
+    li.innerHTML = `
     ${this.getFileIconView(file)}
     <div class="name text-center">${file.name}</div>
-  </li>
-
     `;
+
+    return li;
+  }
+
+  readFiles() {
+    this.getFirebaseRef().on('value', snapshot => {
+      this.listFilesEls.innerHTML = '';
+
+      snapshot.forEach(snapshotItem => {
+        let key = snapshotItem.key;
+        let data = snapshotItem.val();
+
+        console.log(key, data);
+
+        this.listFilesEls.appendChild(this.getFileView(data, key));
+      });
+    });
   }
 }
