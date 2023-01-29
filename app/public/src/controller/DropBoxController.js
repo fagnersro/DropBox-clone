@@ -4,7 +4,7 @@ class DropBoxController {
     this.inputFilesEl = document.querySelector('#files');
     this.snackModalEl = document.querySelector('#react-snackbar-root');
     this.progressBarEl = this.snackModalEl.querySelector('.mc-progress-bar-fg');
-    this.namefileEl = this.snackModalEl.querySelector('.filename');
+    this.nameFileEl = this.snackModalEl.querySelector('.filename');
     this.timeleftEl = this.snackModalEl.querySelector('.timeleft');
     this.listFilesEls = document.querySelector(
       '#list-of-files-and-directories'
@@ -40,7 +40,7 @@ class DropBoxController {
       this.uploadTask(event.target.files)
         .then(responses => {
           responses.forEach(resp => {
-            this.getFireBaseRef().push().set(resp.files['input-file']);
+            this.getFirebaseRef().push().set(resp.files['input-file']);
           });
           this.uploadComplete();
         })
@@ -115,7 +115,7 @@ class DropBoxController {
 
     this.progressBarEl.style.width = `${porcent}%`;
 
-    this.namefileEl.innerHTML = file.name;
+    this.nameFileEl.innerHTML = file.name;
     this.timeleftEl.innerHTML = this.formatTimeToHuman(timeleft);
   }
 
@@ -140,7 +140,7 @@ class DropBoxController {
   }
 
   getFileIconView(file) {
-    switch (file.type) {
+    switch (file.mimetype) {
       case 'folder':
         return `
         <svg width="160" height="160" viewBox="0 0 160 160" class="mc-icon-template-content tile__preview tile__preview--icon">
@@ -479,10 +479,10 @@ class DropBoxController {
   getFileView(file, key) {
     let li = document.createElement('li');
     li.dataset.key = key;
-
+    // ouve alteração de file.name para file.originalFilename
     li.innerHTML = `
     ${this.getFileIconView(file)}
-    <div class="name text-center">${file.name}</div>
+    <div class="name text-center">${file.originalFilename}</div>
     `;
 
     return li;
