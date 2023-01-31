@@ -24,13 +24,14 @@ class DropBoxController {
   }
 
   connectFirebase() {
+    // data firebase
     const config = {
-      apiKey: 'AIzaSyD2tq95uODEXaJLjh-JXNQjKIjPTGzlRyQ',
-      authDomain: 'dropbox-clone-910fd.firebaseapp.com',
-      databaseURL: 'https://dropbox-clone-910fd-default-rtdb.firebaseio.com',
-      projectId: 'dropbox-clone-910fd',
-      storageBucket: 'dropbox-clone-910fd.appspot.com',
-      messagingSenderId: '212323901964',
+      apiKey: 'AIzaSyD2tq95uODEXaJLjh-???????????',
+      authDomain: 'dropbox-clone???????????.firebaseapp.com',
+      databaseURL: 'https://dropbox-???????????.com',
+      projectId: 'dropbox-clone-???????????',
+      storageBucket: 'dropbox-clone-???????????',
+      messagingSenderId: '21232???????????',
     };
 
     // Initialize Firebase
