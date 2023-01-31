@@ -41,6 +41,53 @@ class DropBoxController {
     return this.listFilesEl.querySelectorAll('.selected');
   }
 
+  removeFolderTask(ref, name, key) {
+    return new Promise((resolve, reject) => {
+      let folderRef = this.getFirebaseRef(ref + '/' + name);
+
+      folderRef.on('value', snapshot => {
+        folderRef.off('value');
+
+        if (snapshot.exists()) {
+          snapshot.forEach(item => {
+            let data = item.val();
+            data.key = item.key;
+
+            if (data.type === 'folder') {
+              this.removeFolderTask(ref + '/' + name, data.name)
+                .then(() => {
+                  resolve({
+                    fields: {
+                      key: data.key,
+                    },
+                  });
+                })
+                .catch(err => {
+                  reject(err);
+                });
+            } else if (data.mimetype) {
+              this.removeFile(ref + '/' + name, data.originalFilename)
+                .then(() => {
+                  resolve({
+                    fields: {
+                      key: data.key,
+                    },
+                  });
+                })
+                .catch(err => {
+                  reject(err);
+                });
+            }
+          });
+
+          folderRef.remove();
+        } else {
+          this.getFirebaseRef('fagner').child(key).remove();
+        }
+      });
+    });
+  }
+
   removeTask() {
     let promises = [];
 
@@ -48,14 +95,48 @@ class DropBoxController {
       let file = JSON.parse(li.dataset.file);
       let key = li.dataset.key;
 
-      let formData = new FormData();
+      // let formData = new FormData();
 
-      formData.append('path', file.filepath);
-      formData.append('key', key);
+      // formData.append('path', file.filepath);
+      // formData.append('key', key);
 
-      promises.push(this.ajax('/file', 'DELETE', formData));
+      // this.ajax('/file', 'DELETE', formData) <- passando no push
+      promises.push(
+        new Promise((resolve, reject) => {
+          if (file.type === 'folder') {
+            this.removeFolderTask(
+              this.currentFolder.join('/'),
+              file.name,
+              key
+            ).then(() => {
+              resolve({
+                fields: {
+                  key,
+                },
+              });
+            });
+          } else if (file.mimetype) {
+            this.removeFile(
+              this.currentFolder.join('/'),
+              file.originalFilename
+            ).then(() => {
+              resolve({
+                fields: {
+                  key,
+                },
+              });
+            });
+          }
+        })
+      );
     });
     return Promise.all(promises);
+  }
+
+  removeFile(ref, name) {
+    let fileRef = firebase.storage().ref(ref).child(name);
+
+    return fileRef.delete();
   }
 
   initEvents() {
@@ -127,8 +208,15 @@ class DropBoxController {
 
       this.uploadTask(event.target.files)
         .then(responses => {
+          console.log(responses);
           responses.forEach(resp => {
-            this.getFirebaseRef().push().set(resp.files['input-file']);
+            // resp.files['input-file']
+            this.getFirebaseRef().push().set({
+              originalFilename: resp.name,
+              mimetype: resp.contentType,
+              filepath: resp.downloadURLs[0],
+              size: resp.size,
+            });
           });
           this.uploadComplete();
         })
@@ -192,6 +280,47 @@ class DropBoxController {
     let promises = [];
 
     [...files].forEach(file => {
+      promises.push(
+        new Promise((resolve, reject) => {
+          let fileRef = firebase
+            .storage()
+            .ref(this.currentFolder.join('/'))
+            .child(file.name);
+
+          let task = fileRef.put(file);
+
+          task.on(
+            'state_changed',
+            snapshot => {
+              this.uploadProgress(
+                {
+                  loaded: snapshot.bytesTransferred,
+                  total: snapshot.totalBytes,
+                },
+                file
+              );
+            },
+            error => {
+              console.error(error);
+              reject(error);
+            },
+            () => {
+              fileRef
+                .getMetadata()
+                .then(metadata => {
+                  resolve(metadata);
+                })
+                .catch(err => {
+                  reject(err);
+                });
+            }
+          );
+        })
+      );
+
+      /*
+      
+      promessa retornando um ajax antes do firebase Storage
       let formData = new FormData();
 
       formData.append('input-file', file);
@@ -208,7 +337,7 @@ class DropBoxController {
             this.startUploadTime = Date.now();
           }
         )
-      );
+      );*/
     });
 
     return Promise.all(promises);
@@ -606,7 +735,7 @@ class DropBoxController {
     if (file.type) {
       li1.dataset.key = key;
       li1.dataset.file = JSON.stringify(file);
-      // ouve alteração de file.name para file.originalFilename
+
       li1.innerHTML = `
       ${this.getFileIconView(file)}
       <div class="name text-center">${file.name}</div>
@@ -719,7 +848,8 @@ class DropBoxController {
           break;
 
         default:
-          window.open('/file?path=' + file.path);
+          //'/file?path=' + file.filepath
+          window.open(file.filepath);
       }
     });
 
